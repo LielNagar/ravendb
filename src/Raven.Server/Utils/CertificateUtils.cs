@@ -156,7 +156,7 @@ namespace Raven.Server.Utils
             {
             }
 
-            public CertificateHolder(X509Certificate2 serverCertificate, AsymmetricAlgorithm privateKey)
+            public CertificateHolder(X509Certificate2 serverCertificate, AsymmetricAlgorithm privateKey, string password = null)
             {
                 ServerCertificate = serverCertificate ?? throw new ArgumentNullException(nameof(serverCertificate));
                 PrivateKey = privateKey ?? throw new ArgumentNullException(nameof(privateKey));
@@ -169,7 +169,7 @@ namespace Raven.Server.Utils
                 }
                 else
                 {
-                    var clientCertificate = CreateClientCertificateFromServerCertificate(serverCertificate, out _);
+                    var clientCertificate = CreateClientCertificateFromServerCertificate(serverCertificate, out _, password);
                     ClientCertificate = clientCertificate;
                 }
             }
@@ -252,7 +252,7 @@ namespace Raven.Server.Utils
             }
         }
 
-        public static X509Certificate2 CreateSelfSignedClientCertificate(string commonNameValue, X509Certificate2 issuerCertificate, AsymmetricAlgorithm issuerPrivateKey, out byte[] certBytes, DateTime notAfter)
+        public static X509Certificate2 CreateSelfSignedClientCertificate(string commonNameValue, X509Certificate2 issuerCertificate, AsymmetricAlgorithm issuerPrivateKey, out byte[] certBytes, DateTime notAfter, string password = null)
         {
             var serverCertBytes = issuerCertificate.Export(X509ContentType.Cert);
             CreateSelfSignedCertificateBasedOnPrivateKey(
@@ -262,7 +262,8 @@ namespace Raven.Server.Utils
                 true,
                 false,
                 notAfter,
-                out certBytes);
+                out certBytes,
+                password: password);
 
             ValidateNoPrivateKeyInServerCert(serverCertBytes);
 
@@ -270,7 +271,7 @@ namespace Raven.Server.Utils
             var pfxCollection = new X509Certificate2Collection();
 
             // Import the existing PFX file (client certificate) into the collection
-            pfxCollection.Import(certBytes, null, CertificateLoaderUtil.FlagsForExport);
+            pfxCollection.Import(certBytes, password, CertificateLoaderUtil.FlagsForExport);
 
             // Add the server certificate to the collection
             pfxCollection.Add(CertificateLoaderUtil.CreateCertificate(serverCertBytes, flags: CertificateLoaderUtil.FlagsForExport));
@@ -278,9 +279,9 @@ namespace Raven.Server.Utils
             // Export the entire collection as a new PFX file.
             // The native .NET method handles the complex encoding and
             // combines all certificates into a single PFX byte array.
-            certBytes = pfxCollection.Export(X509ContentType.Pfx, string.Empty);
+            certBytes = pfxCollection.Export(X509ContentType.Pfx, password);
 
-            var cert = CertificateLoaderUtil.CreateCertificate(certBytes, flags: CertificateLoaderUtil.FlagsForPersist);
+            var cert = CertificateLoaderUtil.CreateCertificate(certBytes, password, flags: CertificateLoaderUtil.FlagsForPersist);
             return cert;
         }
 
@@ -336,7 +337,8 @@ namespace Raven.Server.Utils
             IEnumerable<string> sans = null,
             bool with2Eku = false,
             byte[] issuerCertBytes = null,
-            DateTime? notBefore = null)
+            DateTime? notBefore = null,
+            string password = null)
         {
             log?.AppendLine("CreateSelfSignedCertificateBasedOnPrivateKey:");
 
@@ -434,7 +436,7 @@ namespace Raven.Server.Utils
             log?.AppendLine($"notAfter = {certificate.NotAfter}");
 
             // Export the certificate to a PFX byte array.
-            certBytes = certificate.Export(X509ContentType.Pfx, string.Empty);
+            certBytes = certificate.Export(X509ContentType.Pfx, password);
             log?.AppendLine($"certBytes.Length = {certBytes.Length}");
         }
 
@@ -502,7 +504,7 @@ namespace Raven.Server.Utils
                 flags: CertificateLoaderUtil.FlagsForExport);
         }
 
-        public static X509Certificate2 CreateClientCertificateFromServerCertificate(X509Certificate2 serverCertificate, out byte[] clientCertBytes)
+        public static X509Certificate2 CreateClientCertificateFromServerCertificate(X509Certificate2 serverCertificate, out byte[] clientCertBytes, string password = null)
         {
             // Get the private and public keys from the server certificate.
             var issuerPrivateKey = serverCertificate.GetRSAPrivateKey();
@@ -518,11 +520,12 @@ namespace Raven.Server.Utils
                 notAfter: serverCertificate.NotAfter,
                 certBytes: out clientCertBytes,
                 subjectPrivateKey: issuerPrivateKey,
-                issuerCertBytes: serverCertificate.Export(X509ContentType.Cert));
+                issuerCertBytes: serverCertificate.Export(X509ContentType.Cert),
+                password: password);
 
             // Return a new X509Certificate2 object from the generated PFX byte array.
             var flags = X509KeyStorageFlags.PersistKeySet;
-            return new X509Certificate2(clientCertBytes, string.Empty, flags);
+            return new X509Certificate2(clientCertBytes, password, flags);
         }
 
         public static X509Certificate2 ExtractServerCertificateFromExtension(X509Certificate2 clientCert)
@@ -784,15 +787,14 @@ namespace Raven.Server.Utils
             // Export the entire collection to a single PKCS#12 (PFX) byte array.
             // This Export overload exists in older .NET versions.
             byte[] pfxBytes = pfxCollection.Export(
-                X509ContentType.Pfx,
-                string.Empty);
+                X509ContentType.Pfx, setupInfo.Password);
 
             // Store the Base64 representation.
             setupInfo.Certificate = Convert.ToBase64String(pfxBytes);
 
             // Return a new X509Certificate2 object from the exported PFX data.
             var flags = X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet;
-            return new X509Certificate2(pfxBytes, string.Empty, flags);
+            return new X509Certificate2(pfxBytes, setupInfo.Password, flags);
         }
 
         public static string GetBasicCertificateInfo(this X509Certificate2 certificate)

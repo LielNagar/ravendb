@@ -364,7 +364,7 @@ namespace Raven.Server.ServerWide
         {
             AsymmetricAlgorithm privateKey = ValidateServerCertificate(source, serverCertificate, rawBytes, password, licenseType, validateCertKeyUsages, progress);
 
-            return new CertificateUtils.CertificateHolder(serverCertificate, privateKey);
+            return new CertificateUtils.CertificateHolder(serverCertificate, privateKey, password);
         }
 
         public static AsymmetricAlgorithm ValidateServerCertificate(string source,

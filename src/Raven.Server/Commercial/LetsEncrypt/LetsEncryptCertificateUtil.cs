@@ -20,7 +20,7 @@ public sealed class LetsEncryptCertificateUtil
             throw new InvalidOperationException($"Cannot generate the client certificate '{certificateName}' because the server certificate is not loaded.");
 
         // this creates a client certificate which is signed by the current server certificate
-        var selfSignedCertificate = CertificateUtils.CreateSelfSignedClientCertificate(certificateName, certificateHolder.ServerCertificate, certificateHolder.PrivateKey, out var certBytes, setupInfo.ClientCertNotAfter ?? DateTime.UtcNow.Date.AddYears(5));
+        var selfSignedCertificate = CertificateUtils.CreateSelfSignedClientCertificate(certificateName, certificateHolder.ServerCertificate, certificateHolder.PrivateKey, out var certBytes, setupInfo.ClientCertNotAfter ?? DateTime.UtcNow.Date.AddYears(5), setupInfo.Password);
 
         var newCertDef = new CertificateDefinition
         {

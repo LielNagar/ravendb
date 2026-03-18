@@ -6,6 +6,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -658,6 +659,18 @@ namespace Raven.Server.Commercial
                 Processed = 0,
                 Total = 4
             };
+            
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && string.IsNullOrEmpty(setupInfo.Password))
+            {
+                // Generate the required macOS password
+                setupInfo.Password = Guid.NewGuid().ToString("N");
+    
+                // Blast it to the Setup Wizard UI so the user can copy it!
+                progress.AddWarning("🍎 MACOS SECURITY NOTICE:");
+                progress.AddWarning("macOS does not support passwordless certificates.");
+                progress.AddWarning($"We have auto-generated a secure password for you: {setupInfo.Password}");
+                progress.AddWarning("PLEASE COPY THIS PASSWORD NOW. You will need it to install your client certificate!");
+            }
 
             try
             {

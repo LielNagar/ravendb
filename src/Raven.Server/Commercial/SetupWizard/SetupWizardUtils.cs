@@ -114,7 +114,7 @@ public static class SetupWizardUtils
                 if (parameters.PutCertificateInCluster != null && parameters.SetupInfo.RegisterClientCert && parameters.SetupInfo.ZipOnly == false)
                     await parameters.PutCertificateInCluster(selfSignedCertificate, certificateDefinition);
 
-                clientCert = CertificateLoaderUtil.CreateCertificate(certBytes, flags: CertificateLoaderUtil.FlagsForPersist);
+                clientCert = CertificateLoaderUtil.CreateCertificate(certBytes,  parameters.SetupInfo.Password,flags: CertificateLoaderUtil.FlagsForPersist);
             }
             catch (Exception e)
             {

@@ -60,7 +60,7 @@ public static class SettingsZipFileHelper
                     await LetsEncryptCertificateUtil.WriteCertificateAsPemToZipArchiveAsync(
                         $"admin.client.certificate.{parameters.CompleteClusterConfigurationResult.Domain}",
                         parameters.CompleteClusterConfigurationResult.CertBytes,
-                        null,
+                        parameters.SetupInfo.Password,
                         archive);
                 }
                 catch (Exception e)
